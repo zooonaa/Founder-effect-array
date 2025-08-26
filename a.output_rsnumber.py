@@ -1,12 +1,12 @@
 import pandas as pd
 ## setting
-bim_file = "merged_shared_exact.bim"
-target_chr = "13"
-target_pos = 49552182
-output_prefix = "rs777630688"
+bim_file = "prefix_of_the_array_data.bim" # prefix of the array data
+target_chr = "13" # chromosome of the variant
+target_pos = 49552182 # position of the variant
+output_prefix = "rs777630688" #rsnumber of the variant
 
-kb_windows = [10000, 1000, 100, 50]
-snp_window = 20
+kb_windows = [10000, 1000, 100, 50] ## you might adjust the flanking region to the variant
+snp_window = 20 ## you might adjust the flanking snps to the variant
 ##
 cols = ['chr', 'rsid', 'cm', 'pos', 'a1', 'a2']
 bim_df = pd.read_csv(bim_file, sep='\t', header=None, names=cols, dtype={'chr': str})
