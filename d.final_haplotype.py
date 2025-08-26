@@ -1,24 +1,24 @@
+# -*- coding: utf-8 -*-
 import pandas as pd
 import numpy as np
 from scipy.stats import fisher_exact
+import gzip
 
-# === 設定輸入檔案 ===
-rs_number = 'rs116802390'  # 用來標記輸出檔案
-output_prefix = 'rs116802390'  # prefix for result output
-condition = '_20snp'
-vcf_path = rs_number+condition+'_5.phased.vcf.gz'  # phased VCF
-fam_path = 'merged_all.qc.noindel_'+rs_number+'_phenotyped.fam'  # .fam with phenotype
+# === Setting ===
+prefix = 'prefix_of_the_array_data' # prefix of the array data
+rs_number = 'rs761167763'  # rsnumber of the variant
+range = '_1000kb' # range or snp
+vcf_path = prefix+'_'+rs_number+range+'_5.phased.vcf.gz'  # phased VCF
 
-# === 讀取 .fam 檔案，建立 Phenotype 對應表 ===
-fam_df = pd.read_csv(fam_path, sep='\s+', header=None,
+fam_files = f"{prefix}_{rs_number}_phenotyped.fam"
+
+fam_df = pd.read_csv(fam_files, sep=r'\s+', header=None,
                      names=['FID', 'IID', 'PID', 'MID', 'SEX', 'PHENO'])
 pheno_map = dict(zip(fam_df['IID'], fam_df['PHENO']))
 
-# === 擷取 VCF 所有 SNP ===
-
+# === All SNP in VCF ===
 target_rows = []
-import gzip
-with gzip.open(vcf_path, 'rt') as f:  # 'rt' 表示 text 模式解壓讀取
+with gzip.open(vcf_path, 'rt') as f:
     for line in f:
         if line.startswith('#CHROM'):
             header = line.strip().split('\t')
@@ -29,7 +29,7 @@ with gzip.open(vcf_path, 'rt') as f:  # 'rt' 表示 text 模式解壓讀取
 
 vcf_df = pd.DataFrame(target_rows, columns=header[:9] + sample_names)
 
-# === 建立每個樣本的兩條 haplotype 組合 ===
+# === generate 2 haplotype combinations ===
 hap_data = {s: {'H1': [], 'H2': []} for s in sample_names}
 for _, row in vcf_df.iterrows():
     for s in sample_names:
@@ -38,16 +38,19 @@ for _, row in vcf_df.iterrows():
         hap_data[s]['H1'].append(h1)
         hap_data[s]['H2'].append(h2)
 
-# === 整理成 haplotype dataframe ===
+# ===  haplotype dataframe ===
 haplo_df = pd.DataFrame({
     'Sample': sample_names,
     'Haplotype_1': ['-'.join(hap_data[s]['H1']) for s in sample_names],
     'Haplotype_2': ['-'.join(hap_data[s]['H2']) for s in sample_names],
-    'Cleaned_Sample': [s.split('_')[0] + '_' + s.split('_')[1] for s in sample_names]
+    'Cleaned_Sample': [
+        '_'.join(s.split('_')[:4]) if s.startswith('TV') else '_'.join(s.split('_')[:2])
+        for s in sample_names
+    ]
 })
 haplo_df['Phenotype'] = haplo_df['Cleaned_Sample'].map(pheno_map)
 
-# === 統計每個 haplotype 的 case/control 出現次數 ===
+# === count haplotype - case/control number ===
 hap_count = {}
 for _, row in haplo_df.iterrows():
     pheno = row['Phenotype']
@@ -59,6 +62,12 @@ for _, row in haplo_df.iterrows():
 
 total_case = sum([v['case'] for v in hap_count.values()])
 total_control = sum([v['control'] for v in hap_count.values()])
+
+print(f" Total case samples: {total_case}")
+print(f" Total control samples: {total_control}")
+if total_case == 0 or total_control == 0:
+    print("No enough case/control data, skipping analysis.")
+    exit()
 
 # === Fisher's exact test ===
 results = []
@@ -77,7 +86,7 @@ for hap, count in hap_count.items():
     })
 df_result = pd.DataFrame(results)
 
-# === 準備 permutation test ===
+# === Ready for permutation test ===
 hap_expanded = []
 for _, row in haplo_df.iterrows():
     for h in [row['Haplotype_1'], row['Haplotype_2']]:
@@ -105,7 +114,7 @@ for _ in range(100000):
 perm_pvals = {h: (perm_counts[h] + 1) / 100001 for h in hap_list}
 df_result['Permutation_P'] = df_result['Haplotype'].map(perm_pvals)
 
-# === 輸出結果 ===
+# === Output ===
 df_result = df_result.sort_values('Fisher_P')
-df_result.to_csv(output_prefix + condition + '_haplotype_results.csv', index=False)
-print(f"✅ 結果已儲存至 {output_prefix}_haplotype_results.csv")
+df_result.to_csv(rs_number + range + '_haplotype_results.csv', index=False)
+print(f"DONE! {rs_number}{range}_haplotype_results.csv")
