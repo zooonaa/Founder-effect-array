@@ -26,10 +26,14 @@ The results of this analysis will provide crucial insights into the genetic arch
 
 ### Scripts
 
-a.output_rsnumber.py: Generates flanking regions based on a given variant position. (Requires specifying the array prefix, chromosome, position, rs number, and desired flanking region SNPs.)
-b_1.output_region.sh: Uses PLINK to extract the target region generated in the previous step.
-b_2.phased.sh: Performs phasing using Beagle.
-c.phenotype_fam.py: Adds phenotype information to the .fam file.
+a.output_rsnumber.py: Generates flanking regions based on a given variant position. (Requires specifying the array prefix, chromosome, position, rs number, and desired flanking region SNPs.)  <br>
+
+b_1.output_region.sh: Uses PLINK to extract the target region generated in the previous step.  <br>
+
+b_2.phased.sh: Performs phasing using Beagle.  <br>
+
+c.phenotype_fam.py: Adds phenotype information to the .fam file.  <br>
+
 d.final_haplotype.py: Calculates haplotype frequency differences between case and control groups, including p-values and a permutation test (100,000 iterations).
 
 ```
